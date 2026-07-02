@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="7.1-test">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Spec 7.1 – lagringstest</title>
+<style>
+  :root {
+    --bg: #f4f4f2;
+    --fg: #1a1a1a;
+    --muted: #6b6b6b;
+    --card: #ffffff;
+    --line: #e2e2de;
+    --ok: #1a7f37;
+    --warn: #b26a00;
+    --bad: #b3261e;
+    --accent: #2b5fb3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16171a;
+      --fg: #ececec;
+      --muted: #9a9a9a;
+      --card: #212227;
+      --line: #33343a;
+      --ok: #5fd07e;
+      --warn: #e0a94a;
+      --bad: #f2857c;
+      --accent: #7aa2e3;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: -apple-system, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.5;
+    padding: max(16px, env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.35rem; margin: 0 0 4px; }
+  h2 { font-size: 1rem; margin: 24px 0 8px; }
+  p.sub { color: var(--muted); margin: 0 0 20px; font-size: .9rem; }
+  .counter {
+    font-size: 3.5rem;
+    font-weight: 700;
+    text-align: center;
+    padding: 20px 0 8px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin: 10px 0;
+  }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; }
+  .row .k { color: var(--muted); }
+  .row .v { font-weight: 600; text-align: right; }
+  .ok { color: var(--ok); }
+  .warn { color: var(--warn); }
+  .bad { color: var(--bad); }
+  .btns { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 8px; }
+  button, label.filebtn {
+    font: inherit;
+    font-weight: 600;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 16px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    flex: 1 1 auto;
+    text-align: center;
+    min-width: 130px;
+  }
+  button.ghost {
+    background: transparent;
+    color: var(--accent);
+    border: 1.5px solid var(--accent);
+  }
+  button:active, label.filebtn:active { transform: translateY(1px); }
+  input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  .log {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: .8rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--muted);
+  }
+  ol { padding-left: 1.2em; }
+  ol li { margin: 6px 0; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: .85em; }
+</style>
+</head>
+<body>
+  <h1>Spec 7.1 – lagringstest</h1>
+  <p class="sub">Räknaren ökar med 1 vid varje öppning/laddning och sparas i localStorage. Diagnostiken nedan visar var koden körs.</p>
+
+  <div class="counter" id="counter">–</div>
+
+  <div class="card" id="diag"></div>
+
+  <div class="btns">
+    <button id="reload">Ladda om (räkna +1)</button>
+    <button id="reset" class="ghost">Nollställ räknare</button>
+  </div>
+
+  <h2>Export / import (steg 5)</h2>
+  <div class="btns">
+    <button id="export">Exportera state</button>
+    <label class="filebtn" for="importfile">Importera fil</label>
+    <input type="file" id="importfile" accept="application/json,.json">
+  </div>
+  <div class="card"><div class="log" id="iolog">Ingen export/import körd ännu.</div></div>
+
+  <h2>Protokoll att bocka av</h2>
+  <ol>
+    <li><b>iPhone via Filer (file://):</b> AirDroppa filen, öppna via Filer-appen två gånger. Räknaren ska <b>inte</b> öka mellan öppningarna → bekräftar att file:// på iOS är flyktigt.</li>
+    <li><b>iPhone hemskärm (https):</b> lägg filen på GitHub Pages, "Lägg till på hemskärmen", flygplansläge på, öppna → fungerar offline? Öppna igen efter några dagar → räknaren kvar?</li>
+    <li><b>Mac (file://):</b> öppna i Chrome, starta om webbläsaren → räknaren kvar?</li>
+    <li><b>Export/import:</b> exportera via share sheet → Dropbox, importera tillbaka via filväljaren ovan.</li>
+  </ol>
+
+<script>
+(function () {
+  "use strict";
+
+  var KEY = "famapp.test71.counter";
+  var STAMP = "famapp.test71.firstSeen";
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  // --- läs/öka räknare ---
+  var count = 0, storageWorks = true, storageErr = "";
+  try {
+    var raw = localStorage.getItem(KEY);
+    count = raw === null ? 0 : parseInt(raw, 10);
+    if (isNaN(count)) count = 0;
+    count += 1;
+    localStorage.setItem(KEY, String(count));
+    if (localStorage.getItem(STAMP) === null) {
+      localStorage.setItem(STAMP, new Date().toISOString());
+    }
+  } catch (e) {
+    storageWorks = false;
+    storageErr = e && e.message ? e.message : String(e);
+  }
+  document.getElementById("counter").textContent = storageWorks ? count : "n/a";
+
+  // --- diagnostik ---
+  var proto = location.protocol.replace(":", "");
+  var standalone = (window.navigator.standalone === true) ||
+    (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+  var firstSeen = "–";
+  try { firstSeen = localStorage.getItem(STAMP) || "–"; } catch (e) {}
+
+  function classFor(good) { return good ? "ok" : "warn"; }
+
+  var rows = [
+    ["Räkning denna öppning", esc(storageWorks ? count : "kunde inte skrivas"), storageWorks ? "ok" : "bad"],
+    ["Protokoll", esc(proto), proto === "https" ? "ok" : (proto === "file" ? "warn" : "")],
+    ["localStorage fungerar", storageWorks ? "ja" : "NEJ – " + esc(storageErr), storageWorks ? "ok" : "bad"],
+    ["Körs som hemskärmsapp", standalone ? "ja (standalone)" : "nej (i webbläsare/flik)", classFor(standalone)],
+    ["Första öppning (denna origin)", esc(firstSeen), ""],
+    ["Origin", esc(location.origin === "null" ? "null (file://)" : location.origin), ""]
+  ];
+
+  // persist() – asynkron, fylls på efteråt
+  var persistIdx = rows.length;
+  rows.push(["Beständig lagring (persist)", "kollar…", ""]);
+
+  // service worker – asynkron, fylls på efteråt
+  var swIdx = rows.length;
+  rows.push(["Service worker", "kollar…", ""]);
+
+  function render() {
+    var html = rows.map(function (r) {
+      return '<div class="row"><span class="k">' + esc(r[0]) +
+        '</span><span class="v ' + r[2] + '">' + r[1] + "</span></div>";
+    }).join("");
+    document.getElementById("diag").innerHTML = html;
+  }
+  render();
+
+  if (navigator.storage && navigator.storage.persisted) {
+    navigator.storage.persisted().then(function (already) {
+      if (already) {
+        rows[persistIdx] = ["Beständig lagring (persist)", "ja (redan beviljad)", "ok"];
+        render();
+      } else if (navigator.storage.persist) {
+        navigator.storage.persist().then(function (granted) {
+          rows[persistIdx] = ["Beständig lagring (persist)",
+            granted ? "ja (nyss beviljad)" : "nej (webbläsaren nekade)",
+            granted ? "ok" : "warn"];
+          render();
+        }).catch(function () {
+          rows[persistIdx] = ["Beständig lagring (persist)", "fel vid begäran", "warn"];
+          render();
+        });
+      } else {
+        rows[persistIdx] = ["Beständig lagring (persist)", "persist() saknas", "warn"];
+        render();
+      }
+    }).catch(function () {
+      rows[persistIdx] = ["Beständig lagring (persist)", "kunde inte läsas", "warn"];
+      render();
+    });
+  } else {
+    rows[persistIdx] = ["Beständig lagring (persist)", "Storage API saknas", "warn"];
+    render();
+  }
+
+  // --- service worker (endast https, per spec §7) ---
+  if (location.protocol === "https:" && "serviceWorker" in navigator) {
+    try {
+      navigator.serviceWorker.register("sw.js").then(function () {
+        var active = !!navigator.serviceWorker.controller;
+        rows[swIdx] = ["Service worker",
+          active ? "aktiv (styr sidan – offline redo)" : "registrerad (aktiv vid nästa öppning)",
+          active ? "ok" : "warn"];
+        render();
+      }).catch(function (e) {
+        rows[swIdx] = ["Service worker", "fel: " + esc(e && e.message), "bad"];
+        render();
+      });
+    } catch (e) {
+      rows[swIdx] = ["Service worker", "fel vid registrering", "bad"];
+      render();
+    }
+  } else {
+    rows[swIdx] = ["Service worker",
+      location.protocol === "https:" ? "stöds ej i webbläsaren" : "hoppar (kräver https)",
+      "warn"];
+    render();
+  }
+
+  // --- knappar ---
+  document.getElementById("reload").addEventListener("click", function () {
+    location.reload();
+  });
+  document.getElementById("reset").addEventListener("click", function () {
+    try {
+      localStorage.removeItem(KEY);
+      localStorage.removeItem(STAMP);
+    } catch (e) {}
+    location.reload();
+  });
+
+  // --- export ---
+  var iolog = document.getElementById("iolog");
+  function log(msg) {
+    iolog.textContent = new Date().toISOString() + "\n" + msg;
+  }
+
+  document.getElementById("export").addEventListener("click", function () {
+    var payload = {
+      app: "svantes-aktiviteter-test71",
+      exporterad: new Date().toISOString(),
+      counter: count,
+      firstSeen: firstSeen,
+      protocol: proto,
+      standalone: standalone
+    };
+    var text = JSON.stringify(payload, null, 2);
+    var blob = new Blob([text], { type: "application/json" });
+    var fnamn = "test71-export-" + new Date().toISOString().slice(0, 10) + ".json";
+
+    // Föredra share sheet på mobil (steg 5), annars nedladdning.
+    var file = null;
+    try { file = new File([blob], fnamn, { type: "application/json" }); } catch (e) {}
+    if (navigator.share && file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: fnamn })
+        .then(function () { log("Delad via share sheet: " + fnamn); })
+        .catch(function (e) { log("Delning avbröts/misslyckades: " + (e && e.message)); });
+    } else {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = fnamn;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      log("Nedladdad: " + fnamn);
+    }
+  });
+
+  // --- import ---
+  document.getElementById("importfile").addEventListener("change", function (ev) {
+    var f = ev.target.files && ev.target.files[0];
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var obj = JSON.parse(reader.result);
+        log("Import OK från " + esc(f.name) + ":\n" +
+            "counter=" + esc(obj.counter) +
+            "  firstSeen=" + esc(obj.firstSeen) +
+            "  protocol=" + esc(obj.protocol));
+      } catch (e) {
+        log("Import misslyckades (ogiltig JSON): " + esc(e.message));
+      }
+    };
+    reader.onerror = function () { log("Kunde inte läsa filen."); };
+    reader.readAsText(f);
+    ev.target.value = "";
+  });
+})();
+</script>
+</body>
+</html>
