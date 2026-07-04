@@ -1,9 +1,10 @@
-// Spec 7.1 – minimal cache-first service worker (~30 rader).
-// Endast för https-hemskärmstestet. Appen är 100 % funktionell utan denna fil.
+// Hitta på! — minimal cache-first service worker (~30 rader).
+// ENDAST för https-hemskärmsinstallation. Appen är 100 % funktionell utan denna
+// fil (via file:// är lagret dött). Inga externa anrop; endast appens egna filer.
 "use strict";
 
-var CACHE = "test71-v1";
-var ASSETS = ["./test.html", "./manifest.webmanifest", "./icon-180.png"];
+var CACHE = "famapp-v1";
+var ASSETS = ["./", "./index.html", "./manifest.webmanifest"];
 
 self.addEventListener("install", function (e) {
   e.waitUntil(
@@ -29,14 +30,15 @@ self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
   e.respondWith(
     caches.match(e.request).then(function (hit) {
-      if (hit) return hit;
-      return fetch(e.request).then(function (res) {
-        var copy = res.clone();
-        caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+      // Cache-first. Vid nät: revalidera cachen i bakgrunden (stale-while-revalidate).
+      var nät = fetch(e.request).then(function (res) {
+        if (res && res.ok) {
+          var kopia = res.clone();
+          caches.open(CACHE).then(function (c) { c.put(e.request, kopia); });
+        }
         return res;
-      }).catch(function () {
-        return caches.match("./test.html");
-      });
+      }).catch(function () { return hit || caches.match("./index.html"); });
+      return hit || nät;
     })
   );
 });

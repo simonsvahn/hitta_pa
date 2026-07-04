@@ -1,7 +1,7 @@
 {
-  "name": "Hitta på! (7.1-test)",
-  "short_name": "7.1-test",
-  "start_url": "./test.html",
+  "name": "Hitta på!",
+  "short_name": "Hitta på!",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
