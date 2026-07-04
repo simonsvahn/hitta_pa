@@ -70,6 +70,20 @@
                 S10: feedback stänger inte dialogen (re-render), sparaAnteckning
                 (change/blur), egen-aktivitet-handlers. S11: 7 nya tester. Motorn (S7)
                 orörd — poolen slås ihop vid anropsplatsen (§7.4).
+  - 2026-07-04  Fable-designpass (S2 helt omskriven, inga selektorer ändrade —
+                endast utseende; Simons val: jordnära gårdspalett): grangrön
+                accent + gröntonade neutraler (ljust+mörkt), kompakt kontextrad
+                på mobil (chipsrader scrollar i sidled i stället för att wrappa
+                — korten kommer upp ovanför folden), nav som pill-flikar,
+                kategori-eyebrow ovanför korttitel, förklaringsraden i accent-
+                färg, desktop >=960px: dagens tre i 3-kolumnsgrid + centrerade
+                dialoger, prefers-reduced-motion respekterad.
+  - 2026-07-04  Fable-runda efter prompt 4e: (1) naturtaggning av 16 kort i S5
+                (mekaniskt, delegerat: jordgubbar×1, tradgardsbar×3, blabar×2,
+                appel×3, svamp×1, angblom×2, lov×4) + kransens ritualFonster
+                [14,0] (även frodatabas.json). (2) bannerRitualer (S9) använder
+                nu samma per-ritual fönster som motorns F i stället för ±21 —
+                utan fixen hade bannern fortsatt visa kransen efter midsommar.
   - 2026-07-04  Fable (design, Simons platsinventering): PLATSKARTA +13 features
                 (garden: brokvist/husvagn/kompost/uteplats · skargarden: bastu/
                 sjobod/bod/sandstrand · inne: trappa/matbord/kladkammare/kakelugn/
@@ -105,6 +119,21 @@
                 L10 hårda (rött vid brott); L2–L6/L9 väntande/gula (◐) tills totalt ≥ 280,
                 då hårda — dagens 45 gör därför inte ?test=1 rött. Linten gäller ENDAST
                 databasen (AKTIVITETER), aldrig egna aktiviteter. Ingen annan sektion rörd.
+  - 2026-07-04  Prompt 4e (Opus): Säsongsläget — naturflaggor + per-ritual fönster
+                (SPEC §4.3 v1.3, DATAMODELL §2.2/§5.1/§7.1/§7.2). S4: NATURLAGE-konstant
+                (7 flaggor med fönster) + ETIKETTER-tillägg (naturJa/naturNej-etiketter).
+                S7: N-faktorn i poängen S·V·N·E·U·O·D·F·P·I·X·J (natur ja→1.3/obesvarad
+                →0.5/saknas→1.0), natur-nej i hårdfiltret (aldrig relax), ctx.naturJa/
+                naturNej i kontexten, ritualFonster i farskhetFaktor (default [14,7]),
+                N-etikett i förklaringsraden. S8: ui.naturlage-state + auto-nollställning
+                utanför fönster i synkaDag + handlers-stöd (sattNaturflagga). S9: banner-
+                naturfråga (en obesvarad i taget, ja/nej-knappar) + Säsongsläget-dialog.
+                S10: naturflagga/oppnaNaturlage-handlers. S6: valideraEgenAktivitet/
+                valideraImport tillåter natur (⊆NATURLAGE, ≤2) + ritualFonster ([int≥0,
+                int≥0], endast med ritual). S11: L1-lint utökad (natur/ritualFonster) +
+                7 nya tester (N-faktor ja/obesvarad/saknas/nej, fönsterlogik+nollställning,
+                ritualFonster [14,0]). Avsaknad av natur/ritualFonster = exakt dagens
+                beteende (N=1.0, fönster [14,7]); databasen taggas mekaniskt efteråt.
 <!-- ==== S1: HEAD & META ==== -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -115,17 +144,20 @@
 <title>Hitta på!</title>
 <!-- ==== S2: CSS ==== -->
 <style>
+  /* Designpass 2026-07-04 (Fable): jordnära gårdspalett, kompakt mobil kontextrad
+     (scrollrader i stället för wrap), tydligare hierarki, 3-kolumns trio på desktop.
+     Alla selektorer/klassnamn oförändrade — endast utseende. */
   :root {
-    --bg: #f4f4f2; --fg: #1a1a1a; --muted: #6b6b6b; --card: #ffffff;
-    --line: #e2e2de; --accent: #2b5fb3; --accent-fg: #ffffff;
-    --vald: #2b5fb3; --ok: #1a7f37; --warn: #b26a00; --bad: #b3261e;
-    --radie: 14px; --lucka: 12px;
+    --bg: #f2f1ec; --fg: #232620; --muted: #68705f; --card: #fdfdfb;
+    --line: #dfdfd6; --accent: #38652e; --accent-fg: #ffffff;
+    --vald: #38652e; --ok: #2e7d32; --warn: #a05c1c; --bad: #a63a2b;
+    --radie: 12px; --lucka: 12px;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #16171a; --fg: #ececec; --muted: #9a9a9a; --card: #212227;
-      --line: #33343a; --accent: #7aa2e3; --accent-fg: #10131a;
-      --vald: #7aa2e3; --ok: #5fd07e; --warn: #e0a94a; --bad: #f2857c;
+      --bg: #171a15; --fg: #e9e8e0; --muted: #a4a898; --card: #21251d;
+      --line: #363b30; --accent: #8cbf79; --accent-fg: #14200f;
+      --vald: #8cbf79; --ok: #7fce8a; --warn: #d9a253; --bad: #e08573;
     }
   }
   * { box-sizing: border-box; }
@@ -137,35 +169,44 @@
   }
   #app {
     max-width: 640px; margin: 0 auto;
-    padding: max(12px, env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
+    padding: max(10px, env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
   }
-  header { margin-bottom: 8px; }
+  header { margin-bottom: 6px; }
   .topp { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-  h1 { font-size: 1.4rem; margin: 6px 0 10px; }
+  h1 { font-size: 1.15rem; font-weight: 800; letter-spacing: -.01em; margin: 4px 0 6px; }
   .lank {
     background: none; border: none; color: var(--accent); font: inherit;
     font-weight: 600; cursor: pointer; padding: 6px 2px;
   }
-  .miljoval, .vaderrad { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+  /* Scrollrader: chipsrader ligger på EN rad och scrollar i sidled på smal skärm */
+  .miljoval, .vaderrad { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 7px;
+    margin: 6px -14px; padding: 2px 14px; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; }
+  .miljoval::-webkit-scrollbar, .vaderrad::-webkit-scrollbar,
+  .dagsform .grupp::-webkit-scrollbar, .sasongbanner::-webkit-scrollbar,
+  .naturbanner::-webkit-scrollbar { display: none; }
   .chip {
-    font: inherit; font-weight: 600; background: var(--card); color: var(--fg);
-    border: 1.5px solid var(--line); border-radius: 999px; padding: 9px 14px;
-    cursor: pointer; -webkit-appearance: none;
+    font: inherit; font-size: .95rem; font-weight: 600; background: var(--card); color: var(--fg);
+    border: 1.5px solid var(--line); border-radius: 999px; padding: 8px 13px;
+    cursor: pointer; -webkit-appearance: none; flex: none; white-space: nowrap;
   }
-  .chip.liten { font-size: .9rem; padding: 7px 12px; font-weight: 500; }
+  .chip.liten { font-size: .88rem; padding: 7px 11px; font-weight: 500; }
   .chip.vald { background: var(--vald); color: var(--accent-fg); border-color: var(--vald); }
   .chip:active { transform: translateY(1px); }
-  .vaderrad { margin-top: 4px; border-top: 1px solid var(--line); padding-top: 12px; }
-  .kort-lista { display: flex; flex-direction: column; gap: var(--lucka); margin-top: 14px; }
+  .vaderrad { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 2px; }
+  .kort-lista { display: flex; flex-direction: column; gap: var(--lucka); margin-top: 12px; }
   .kort {
-    display: flex; flex-direction: column; gap: 4px; text-align: left;
+    display: flex; flex-direction: column; gap: 3px; text-align: left;
     background: var(--card); border: 1px solid var(--line); border-radius: var(--radie);
-    padding: 16px; cursor: pointer; font: inherit; color: var(--fg); width: 100%;
+    padding: 14px 16px; cursor: pointer; font: inherit; color: var(--fg); width: 100%;
+    box-shadow: 0 1px 2px rgba(35, 38, 32, .04);
   }
   .kort:active { transform: scale(.995); }
-  .kort-titel { font-size: 1.15rem; font-weight: 700; }
-  .kort-kat { color: var(--accent); font-weight: 600; font-size: .9rem; }
-  .kort-meta { color: var(--muted); font-size: .88rem; }
+  .kort-titel { font-size: 1.08rem; font-weight: 700; line-height: 1.3; }
+  .kort-kat { order: -1; color: var(--muted); font-weight: 600; font-size: .72rem;
+    text-transform: uppercase; letter-spacing: .06em; }
+  .kort-meta { color: var(--muted); font-size: .86rem; }
+  .kort-forklaring { color: var(--accent); font-weight: 500; font-size: .86rem; margin-top: 2px; }
   .fel {
     background: var(--card); border: 1px dashed var(--line); border-radius: var(--radie);
     padding: 24px 16px; text-align: center; color: var(--muted); margin-top: 14px;
@@ -177,7 +218,7 @@
   .datavy { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
   .knapp {
     font: inherit; font-weight: 700; background: var(--accent); color: var(--accent-fg);
-    border: none; border-radius: 10px; padding: 14px 16px; cursor: pointer;
+    border: none; border-radius: 10px; padding: 13px 16px; cursor: pointer;
     -webkit-appearance: none;
   }
   .knapp.ghost { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
@@ -186,7 +227,7 @@
     border: none; border-radius: 16px 16px 0 0; padding: 20px 18px calc(24px + env(safe-area-inset-bottom));
     width: 100%; max-width: 640px; margin: auto auto 0; background: var(--card); color: var(--fg);
   }
-  dialog::backdrop { background: rgba(0,0,0,.45); }
+  dialog::backdrop { background: rgba(20, 24, 16, .5); }
   dialog h2 { margin: 0 0 8px; font-size: 1.3rem; }
   .taggar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
   .tagg {
@@ -196,7 +237,8 @@
   .steg { padding-left: 1.2em; } .steg li { margin: 4px 0; }
   .anpassning p { margin: 6px 0; color: var(--muted); }
   .anpassning .aktivt-band { color: var(--fg); font-weight: 500; }
-  .risk { background: var(--bg); border-radius: 10px; padding: 10px 12px; margin-top: 12px; font-size: .92rem; }
+  .risk { background: var(--bg); border-left: 3px solid var(--warn); border-radius: 8px;
+    padding: 10px 12px; margin-top: 12px; font-size: .92rem; }
   .stang { margin-top: 18px; width: 100%; font: inherit; font-weight: 700;
     background: var(--accent); color: var(--accent-fg); border: none; border-radius: 10px; padding: 14px; cursor: pointer; }
   .test { font-family: ui-monospace, Menlo, monospace; }
@@ -206,13 +248,18 @@
   .test tr.rod td:first-child { color: var(--bad); font-weight: 700; }
   .test tr.rod td { color: var(--bad); }
   /* -- Prompt 3 -- */
-  .nav { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 4px 0 8px; }
-  .nav .lank { padding: 4px 0; }
-  .nav .lank.aktiv { text-decoration: underline; }
-  .dagsform { margin-top: 10px; }
-  .dagsform .grupp { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; }
-  .dagsform .etikett { font-size: .82rem; color: var(--muted); min-width: 74px; }
-  .kort-forklaring { color: var(--muted); font-size: .85rem; margin-top: 2px; }
+  .nav { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 2px; margin: 2px -14px 8px;
+    padding: 0 14px; scrollbar-width: none; }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav .lank { padding: 7px 11px; border-radius: 999px; color: var(--muted);
+    font-weight: 600; white-space: nowrap; flex: none; }
+  .nav .lank.aktiv { text-decoration: none; color: var(--accent); background: var(--card);
+    box-shadow: inset 0 0 0 1.5px var(--line); }
+  .dagsform { margin-top: 8px; }
+  .dagsform .grupp { display: flex; flex-wrap: nowrap; overflow-x: auto; align-items: center;
+    gap: 7px; margin: 5px -14px; padding: 2px 14px; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; }
+  .dagsform .etikett { font-size: .78rem; color: var(--muted); min-width: 70px; flex: none; }
   .kort-marken { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
   .marke { font-size: .72rem; font-weight: 600; padding: 2px 8px; border-radius: 999px;
     background: var(--bg); border: 1px solid var(--line); color: var(--muted); }
@@ -220,7 +267,7 @@
   .kort-topp { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
   .stjarna { background: none; border: none; font-size: 1.3rem; cursor: pointer; line-height: 1;
     padding: 0 2px; color: var(--muted); }
-  .stjarna.pa { color: #e0a400; }
+  .stjarna.pa { color: #d99a06; }
   .feedback { display: flex; gap: 8px; margin: 14px 0 6px; }
   .feedback button { flex: 1; font: inherit; font-weight: 600; padding: 12px 6px; border-radius: 10px;
     border: 1.5px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; }
@@ -236,7 +283,7 @@
   .intaggen { display: inline-flex; align-items: center; gap: 6px; background: var(--bg);
     border: 1px solid var(--line); border-radius: 999px; padding: 4px 8px 4px 12px; font-size: .85rem; }
   .intaggen button { background: none; border: none; cursor: pointer; font-size: .95rem; color: var(--muted); padding: 0 2px; }
-  .intaggen .pinn.pa { color: #e0a400; }
+  .intaggen .pinn.pa { color: #d99a06; }
   .barnrad { display: flex; align-items: center; justify-content: space-between; gap: 10px;
     padding: 12px 0; border-bottom: 1px solid var(--line); }
   .barnrad .val { display: flex; align-items: center; gap: 10px; }
@@ -269,12 +316,26 @@
     font-size: .9rem; margin-bottom: 8px; }
   .egenfel[hidden] { display: none; }
   /* -- Prompt 4 -- */
-  .sasongbanner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-    background: var(--card); border: 1px solid var(--line); border-radius: var(--radie);
-    padding: 10px 12px; margin-bottom: 10px; }
-  .sasongbanner-titel { font-weight: 700; font-size: .92rem; }
+  .sasongbanner { display: flex; flex-wrap: nowrap; overflow-x: auto; align-items: center;
+    gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radie);
+    padding: 9px 12px; margin: 0 -14px 8px; border-left: none; border-right: none;
+    border-radius: 0; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    padding-left: 14px; padding-right: 14px; }
+  .sasongbanner-titel { font-weight: 700; font-size: .9rem; flex: none; }
   .sasongchip { border-color: var(--accent); color: var(--accent); }
   .sasongchip.ritual { border-color: var(--warn); color: var(--warn); }
+  /* -- Prompt 4e: Säsongsläget (naturflaggor) -- */
+  .naturbanner { display: flex; flex-wrap: nowrap; overflow-x: auto; align-items: center;
+    gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radie);
+    padding: 9px 12px; margin-bottom: 8px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .naturbanner-fraga { font-weight: 600; font-size: .9rem; flex: none; }
+  .naturbanner-klar { font-weight: 600; font-size: .9rem; color: var(--muted); flex: none; }
+  .naturrad { padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .naturrad:last-of-type { border-bottom: none; }
+  .naturrad-titel { font-weight: 600; font-size: .92rem; margin-bottom: 6px; }
+  .naturval { display: flex; flex-wrap: wrap; gap: 6px; }
+  .naturrad.grad .naturrad-titel { color: var(--muted); font-weight: 500; }
+  .naturrad-fonster { color: var(--muted); font-size: .82rem; }
   .exportrad { display: block; width: 100%; text-align: left; font: inherit; font-weight: 600;
     font-size: .88rem; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px;
     margin-bottom: 10px; cursor: pointer; background: var(--card); color: var(--muted); }
@@ -290,13 +351,32 @@
   .snaprad { display: flex; align-items: center; justify-content: space-between; gap: 10px;
     padding: 8px 0; border-bottom: 1px solid var(--line); }
   .banner.nyar { background: var(--ok); cursor: pointer; }
+  /* Desktop: dagens tre som trio i bredd, dialoger centrerade */
+  @media (min-width: 960px) {
+    #app { max-width: 1020px; }
+    .kort-lista { display: grid; grid-template-columns: repeat(3, 1fr); align-items: stretch; }
+    .kort { height: 100%; }
+    .kort-lista .fel { grid-column: 1 / -1; }
+    .miljoval, .vaderrad, .dagsform .grupp, .nav { flex-wrap: wrap; overflow-x: visible;
+      margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
+    .sasongbanner { margin-left: 0; margin-right: 0; border-left: 1px solid var(--line);
+      border-right: 1px solid var(--line); border-radius: var(--radie); flex-wrap: wrap; }
+    .datavy, .onboarding { max-width: 620px; }
+    dialog { border-radius: 16px; margin: auto; max-width: 560px;
+      padding-bottom: 24px; box-shadow: 0 12px 48px rgba(0,0,0,.3); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .chip:active, .kort:active { transform: none; }
+  }
   /* Tillgänglighet: synligt fokus + tap-ytor ≥ 44 px på interaktiva element */
   a:focus-visible, button:focus-visible, input:focus-visible, label:focus-visible,
   [tabindex]:focus-visible, dialog:focus-visible {
     outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 6px;
   }
   button, .chip, .knapp, .lank, .stjarna, .kort, .exportrad, .sasongchip { min-height: 44px; }
-  .chip.liten, .lank, .nav .lank, .stjarna { min-height: 0; }
+  .chip.liten, .lank, .stjarna { min-height: 0; }
+  .chip, .chip.liten { min-height: 40px; }
+  .nav .lank { min-height: 38px; }
   .kort { min-height: 44px; }
   .feedback button, .detalj-verktyg button, .stang { min-height: 44px; }
 </style>
@@ -307,6 +387,7 @@
 <dialog id="detalj"><div id="detaljInnehall"></div></dialog>
 <dialog id="barnform"><div id="barnformInnehall"></div></dialog>
 <dialog id="egenform"><div id="egenformInnehall"></div></dialog>
+<dialog id="naturlage"><div id="naturlageInnehall"></div></dialog>
 <div id="toast" class="toast" hidden></div>
 
 <!-- ==== S5: AKTIVITETSDATA ==== -->
@@ -328,6 +409,7 @@
       },
       "platser": ["koksland"],
       "sasonger": ["forsommar", "hogsommar"],
+      "natur": ["jordgubbar"],
       "vader": { "kraver": ["barmark"] },
       "energi": "lag",
       "vuxen": 2,
@@ -461,6 +543,7 @@
       },
       "platser": ["frukttrad"],
       "sasonger": ["skordetid"],
+      "natur": ["appel"],
       "energi": "medel",
       "vuxen": 2,
       "forberedelse": 0,
@@ -501,6 +584,7 @@
       "alderMan": [10, 58],
       "platser": ["barbuskar"],
       "sasonger": ["hogsommar", "skordetid"],
+      "natur": ["tradgardsbar"],
       "vader": { "kraver": ["barmark"] },
       "energi": "lag",
       "vuxen": 2,
@@ -519,6 +603,7 @@
       "alderMan": [18, 168],
       "platser": ["blabarsris"],
       "sasonger": ["hogsommar", "skordetid"],
+      "natur": ["blabar"],
       "vader": { "kraver": ["barmark"] },
       "energi": "medel",
       "vuxen": 2,
@@ -912,6 +997,7 @@
       "alderMan": [24, 168],
       "platser": ["ang"],
       "sasonger": ["forsommar"],
+      "natur": ["angblom"],
       "vader": { "kraver": ["barmark"] },
       "energi": "lag",
       "vuxen": 2,
@@ -922,6 +1008,7 @@
       "teman": ["vaxter"],
       "ritual": true,
       "ritualDatum": "06-19",
+      "ritualFonster": [14, 0],
       "hojdpunkt": true,
       "syskon": "samarbete"
     },
@@ -1284,6 +1371,7 @@
       "sasonger": [
         "host"
       ],
+      "natur": ["lov"],
       "vader": {
         "kraver": [
           "barmark"
@@ -1456,6 +1544,7 @@
       "sasonger": [
         "host"
       ],
+      "natur": ["lov"],
       "vader": {
         "kraver": [
           "barmark"
@@ -2419,6 +2508,7 @@
       "sasonger": [
         "host"
       ],
+      "natur": ["lov"],
       "vader": {
         "kraver": [
           "barmark"
@@ -2758,6 +2848,7 @@
         "skordetid",
         "host"
       ],
+      "natur": ["svamp"],
       "vader": {
         "kraver": [
           "barmark"
@@ -3108,6 +3199,7 @@
         "hogsommar",
         "skordetid"
       ],
+      "natur": ["tradgardsbar"],
       "vader": {
         "kraver": [
           "barmark"
@@ -3149,6 +3241,7 @@
         "hogsommar",
         "skordetid"
       ],
+      "natur": ["tradgardsbar"],
       "energi": "medel",
       "vuxen": 3,
       "forberedelse": 1,
@@ -3200,6 +3293,7 @@
         "hogsommar",
         "skordetid"
       ],
+      "natur": ["blabar"],
       "vader": {
         "kraver": [
           "barmark"
@@ -6056,6 +6150,7 @@
         "hogsommar",
         "skordetid"
       ],
+      "natur": ["angblom"],
       "vader": {
         "kraver": [
           "barmark"
@@ -8099,6 +8194,7 @@
         "skordetid",
         "host"
       ],
+      "natur": ["appel"],
       "energi": "lag",
       "vuxen": 2,
       "forberedelse": 1,
@@ -8516,6 +8612,7 @@
         "host",
         "skordetid"
       ],
+      "natur": ["lov"],
       "energi": "medel",
       "vuxen": 3,
       "forberedelse": 1,
@@ -9532,6 +9629,7 @@
         "skordetid",
         "host"
       ],
+      "natur": ["appel"],
       "vader": {
         "olampligt": [
           "regn"
@@ -12345,7 +12443,9 @@ const ETIKETTER = {
   kallt:"Kallt (under −10)", vet_ej:"Vet ej",
   vardagsarbete:"Vardagsarbete", naturlek:"Naturlek", motorik:"Rörelse", sensorik:"Sinnen",
   utforskande:"Utforskande", skapande:"Skapande", berattande:"Berättande & tradition",
-  omsorg:"Omsorg & ansvar", aventyr:"Äventyr", vila:"Vila"
+  omsorg:"Omsorg & ansvar", aventyr:"Äventyr", vila:"Vila",
+  jordgubbar:"🍓 Jordgubbar", tradgardsbar:"🍒 Bärbuskar", blabar:"🫐 Blåbär",
+  appel:"🍎 Äpplen", svamp:"🍄 Svamp", angblom:"🌸 Ängsblommor", lov:"🍂 Löven"
 };
 const ENERGI_ET = { lag:"Lugn", medel:"Mellan", hog:"Fart" };
 const DURATION_ET = { kort:"Kort stund", medel:"En stund", lang:"Länge" };
@@ -12356,6 +12456,20 @@ const TALAMOD_ET = { snabbt_vidare:"Snabbt vidare", lagom:"Lagom", djupdyk:"Djup
 // Chip-startvärde-etiketter i barnprofilen (energi + tålamod). "" = inget/neutralt.
 const ENERGI_DEFAULT_ET = { "":"Inget", lag:"Trött", medel:"Lagom", hog:"Sprallig" };
 const TALAMOD_DEFAULT_ET = { "":"Inget", snabbt_vidare:"Snabbt vidare", lagom:"Lagom", djupdyk:"Djupdyk" };
+
+// Naturläget (DATAMODELL §5.1, tillkom 1.3). Tri-state per flagga: "ja"/"nej"/null.
+// Fönster = [[fromMånad,fromDag],[tillMånad,tillDag]] (cykliskt om from > till).
+// etikett = förklaringsrads-text när N=1.3 ("🍓 mogna nu"). Semantik i S7.
+const NATURLAGE = [
+  { id:"jordgubbar",  fraga:"🍓 Är jordgubbarna mogna?", etikett:"🍓 mogna nu",   fonster:[[6,20],[9,30]] },
+  { id:"tradgardsbar", fraga:"🍒 Är bärbuskarna mogna?",  etikett:"🍒 mogna nu",   fonster:[[7,1],[8,31]] },
+  { id:"blabar",      fraga:"🫐 Är blåbären mogna?",      etikett:"🫐 mogna nu",   fonster:[[7,15],[8,31]] },
+  { id:"appel",       fraga:"🍎 Är äpplena mogna?",       etikett:"🍎 mogna nu",   fonster:[[8,1],[10,31]] },
+  { id:"svamp",       fraga:"🍄 Är svampen uppe?",        etikett:"🍄 uppe nu",    fonster:[[8,1],[10,31]] },
+  { id:"angblom",     fraga:"🌸 Blommar ängen?",          etikett:"🌸 blommar nu", fonster:[[6,1],[8,31]] },
+  { id:"lov",         fraga:"🍂 Faller löven?",           etikett:"🍂 faller nu",  fonster:[[9,1],[11,30]] }
+];
+const NATURLAGE_IDS = NATURLAGE.map(function(f){ return f.id; });
 
 // Modultillstånd (ej persistent): vald flik.
 let VY = "hem";
@@ -12616,6 +12730,19 @@ function valideraEgenAktivitet(a){
   if(a.material!==undefined){
     if(!Array.isArray(a.material) || a.material.length>8) fel.push("Högst 8 materialrader.");
   }
+  // natur: valfritt, 0–2 flaggor ur NATURLAGE (DATAMODELL §2.2/§5.1).
+  if(a.natur!==undefined){
+    if(!Array.isArray(a.natur) || a.natur.length>2) fel.push("Högst 2 naturflaggor.");
+    else a.natur.forEach(function(fid){ if(NATURLAGE_IDS.indexOf(fid)<0) fel.push("Okänd naturflagga: "+fid); });
+  }
+  // ritualFonster: valfritt, [dagarFore≥0, dagarEfter≥0], endast med ritual (§2.2/§7.2).
+  if(a.ritualFonster!==undefined){
+    if(!a.ritual) fel.push("ritualFonster kräver ritual: true.");
+    if(!Array.isArray(a.ritualFonster) || a.ritualFonster.length!==2 ||
+       !Number.isInteger(a.ritualFonster[0]) || !Number.isInteger(a.ritualFonster[1]) ||
+       a.ritualFonster[0]<0 || a.ritualFonster[1]<0)
+      fel.push("ritualFonster ska vara [dagarFore≥0, dagarEfter≥0].");
+  }
   return { ok:fel.length===0, fel:fel };
 }
 
@@ -12661,6 +12788,31 @@ function grannSasonger(sasong){
   const n=ids.length;
   return [ ids[(i-1+n)%n], ids[(i+1)%n] ];
 }
+// Naturläget (DATAMODELL §5.1). Fönstret [[fm,fd],[tm,td]] är cykliskt om from > till
+// (ingen av dagens flaggor är det, men logiken hålls generell). Datumjämförelse på
+// (månad,dag) oberoende av år.
+function inomNaturFonster(flagga, manad, dag){
+  const f=flagga.fonster; if(!f) return false;
+  const fm=f[0][0], fd=f[0][1], tm=f[1][0], td=f[1][1];
+  const efterStart = manad>fm || (manad===fm && dag>=fd);
+  const foreSlut   = manad<tm || (manad===tm && dag<=td);
+  if(fm<tm || (fm===tm && fd<=td)) return efterStart && foreSlut;   // vanligt fönster
+  return efterStart || foreSlut;                                    // cykliskt över nyår
+}
+function naturFlagga(id){ for(let i=0;i<NATURLAGE.length;i++){ if(NATURLAGE[i].id===id) return NATURLAGE[i]; } return null; }
+// Bygger mängderna av flaggor som är i fönster OCH satta (ja/nej) för dagens datum.
+function naturLage(naturlage, nu){
+  const manad=nu.getMonth()+1, dag=nu.getDate();
+  const ja=new Set(), nej=new Set();
+  const ul = (naturlage && typeof naturlage==="object") ? naturlage : {};
+  NATURLAGE.forEach(function(flagga){
+    const v=ul[flagga.id];
+    if(v!=="ja" && v!=="nej") return;                 // obesvarad ⇒ ingen mängd
+    if(!inomNaturFonster(flagga, manad, dag)) return; // utanför fönster ⇒ ignoreras
+    if(v==="ja") ja.add(flagga.id); else nej.add(flagga.id);
+  });
+  return { ja:ja, nej:nej };
+}
 function byggKontext(nu, state){
   const ui = state.ui || {};
   const dagslage = ui.dagslage || {};
@@ -12679,11 +12831,13 @@ function byggKontext(nu, state){
   const tillstand = haerleddaTillstand(sasong, chip, nu.getHours(), nu.getMonth()+1);
   const isoD = isoDatum(nu);
   const nonce = dagslage.nonce || 0;
+  const nlage = naturLage(ui.naturlage, nu);   // §5.1: flaggor i fönster + satta
   return {
     nu:nu, isoD:isoD, barnIds:barnIds, barnAldrar:barnAldrar, aldsta:aldsta,
     ihop: barnIds.length>1, utanforSpann:utanforSpann,
     sasong:sasong, grann:grannSasonger(sasong), basmiljo: ui.basmiljo||"garden",
     chip:chip, tillstand:tillstand,
+    naturJa: nlage.ja, naturNej: nlage.nej,   // §5.1 AND-semantik (skilt från väder)
     energiChip: dagslage.energi || null,           // prompt 3 lägger UI; default: ingen
     talamodChip: dagslage.talamod || null,         // prompt 4b: U-faktorn; default: ingen
     ork: (dagslage.ork!=null) ? dagslage.ork : 3,  // default 3
@@ -12742,6 +12896,11 @@ function hardfilter(a, ctx, niva){
     const tillaten = durRank(ctx.tidChip) + (niva>=2 ? 1 : 0);
     if(durRank(a.duration) > tillaten) return false;
   }
+  // NATUR (§5.1): någon förutsatt flagga är satt "nej" och i fönster ⇒ bort.
+  // Naturen är stängd — relaxeras ALDRIG (oberoende av niva).
+  if(Array.isArray(a.natur) && a.natur.length){
+    if(a.natur.some(function(fid){ return ctx.naturNej.has(fid); })) return false;
+  }
   return true;
 }
 function byggPool(ctx, aktiviteter){
@@ -12782,6 +12941,14 @@ function energiFaktor(a, ctx){
   const diff=Math.abs(rank[ctx.energiChip]-rank[a.energi]);
   return diff===0 ? 1.0 : (diff===1 ? 0.6 : 0.3);
 }
+// N — naturläget (DATAMODELL §5.1/§7.1). AND över aktivitetens natur-flaggor.
+// natur saknas/tom ⇒ 1.0 · alla flaggor ∈ naturJa ⇒ 1.3 · annars ⇒ 0.5.
+// (Någon flagga ∈ naturNej når aldrig hit — hårdfiltrerad.)
+function naturFaktor(a, ctx){
+  if(!Array.isArray(a.natur) || a.natur.length===0) return 1.0;
+  const allaJa = a.natur.every(function(fid){ return ctx.naturJa.has(fid); });
+  return allaJa ? 1.3 : 0.5;
+}
 // U — tålamod mot aktivitetens duration (DATAMODELL §7.1). Mjuk faktor, aldrig filter.
 // Chipvärden mappar snabbt_vidare→kort · lagom→medel · djupdyk→lang (samma rank som duration).
 function talamodFaktor(a, ctx){
@@ -12820,13 +12987,22 @@ function ritualForekomst(nu, mmdd){
 function farskhetFaktor(a, ctx){
   if(a.ritual && a.ritualDatum){
     const occ=ritualForekomst(ctx.nu, a.ritualDatum);
-    const inom = Math.abs((ctx.nu.getTime()-occ.getTime())/86400000) <= 21;
+    // Per-ritual fönster (DATAMODELL §7.2, 1.3): [dagarFore, dagarEfter], default [14,7].
+    // Asymmetriskt kring ritualDatum: −dagarFore .. +dagarEfter (cykliskt via ritualForekomst).
+    let fore=14, efter=7;
+    if(Array.isArray(a.ritualFonster) && a.ritualFonster.length===2 &&
+       typeof a.ritualFonster[0]==="number" && typeof a.ritualFonster[1]==="number"){
+      fore=a.ritualFonster[0]; efter=a.ritualFonster[1];
+    }
+    const dSign=(ctx.nu.getTime()-occ.getTime())/86400000;  // <0 före, >0 efter ritualdatum
+    const inom = dSign >= -fore && dSign <= efter;
     if(inom){
       let loggadIAr=false;
       for(const lid in ctx.log){
         const l=ctx.log[lid];
         if(l && l.activityId===a.id && ctx.barnIds.indexOf(l.childId)>=0 && l.ts){
-          if(Math.abs((occ.getTime()-new Date(l.ts).getTime())/86400000) <= 21){ loggadIAr=true; break; }
+          const ld=(occ.getTime()-new Date(l.ts).getTime())/86400000;
+          if(ld >= -efter && ld <= fore){ loggadIAr=true; break; }
         }
       }
       return loggadIAr ? 0.2 : 2.5;
@@ -12882,11 +13058,11 @@ function syskonFaktor(a, ctx){
 }
 function jitterFaktor(a, ctx){ return 0.9 + 0.2*mulberry32(hashStr(ctx.seed + ":" + a.id))(); }
 function poangsatt(a, ctx, relaxNiva){
-  const S=sasongsFaktor(a,ctx), V=vaderFaktor(a,ctx), E=energiFaktor(a,ctx),
+  const S=sasongsFaktor(a,ctx), V=vaderFaktor(a,ctx), N=naturFaktor(a,ctx), E=energiFaktor(a,ctx),
         U=talamodFaktor(a,ctx), O=orkFaktor(a,ctx), D=avstandFaktor(a,ctx), F=farskhetFaktor(a,ctx),
         P=preferensFaktor(a,ctx), I=syskonFaktor(a,ctx),
         X=Math.pow(0.8, relaxNiva), J=jitterFaktor(a,ctx);
-  return { poang: S*V*E*U*O*D*F*P*I*X*J, faktorer:{ S:S,V:V,E:E,U:U,O:O,D:D,F:F,P:P,I:I,X:X,J:J } };
+  return { poang: S*V*N*E*U*O*D*F*P*I*X*J, faktorer:{ S:S,V:V,N:N,E:E,U:U,O:O,D:D,F:F,P:P,I:I,X:X,J:J } };
 }
 
 // -- Diversifiering --
@@ -12925,6 +13101,10 @@ function byggForklaring(f, ctx, a){
   else if(f.O<1.0) delar.push("kräver vuxen");
   if(f.U!==1.0 && ctx.talamodChip){ delar.push(ctx.talamodChip==="snabbt_vidare" ? "snabba ryck idag" : (ctx.talamodChip==="djupdyk" ? "djupdyksdag" : "lagom längd")); }
   if(f.V!==1.0) delar.push(f.V>1.0 ? "passar vädret" : "osäkert väder");
+  // N=1.3: naturen är mogen — visa flaggans etikett (§5.1). N=0.5: tyst dämpning.
+  if(f.N>1.0 && Array.isArray(a.natur)){
+    a.natur.forEach(function(fid){ const fl=naturFlagga(fid); if(fl && fl.etikett) delar.push(fl.etikett); });
+  }
   const topp=delar.slice(0,3);
   return topp.length ? ("Därför: "+topp.join(" · ")) : "";
 }
@@ -13061,12 +13241,30 @@ function tillampaChipDefaults(s, dagslage){
   if(cd.energi!==undefined && ENERGI_ET[cd.energi]!==undefined) dagslage.energi=cd.energi;
   if(cd.talamod!==undefined && TALAMOD_ET[cd.talamod]!==undefined) dagslage.talamod=cd.talamod;
 }
+// Naturläget (DATAMODELL §5.1): flaggor vars fönster INTE omfattar dagens datum
+// nollställs till null — fjolårets "ja" spökar aldrig. ui.naturlage är enhetslokal
+// (merge:as ej, ingen schemaVersion-bump). Muterar s in place, returnerar antal ändrade.
+function nollstallNaturUtanforFonster(s, nu){
+  if(!s.ui) return 0;
+  const nl=s.ui.naturlage;
+  if(!nl || typeof nl!=="object") return 0;
+  const manad=nu.getMonth()+1, dag=nu.getDate();
+  let andrade=0;
+  NATURLAGE.forEach(function(flagga){
+    if(nl[flagga.id]!=null && !inomNaturFonster(flagga, manad, dag)){
+      nl[flagga.id]=null; andrade++;
+    }
+  });
+  return andrade;
+}
 function synkaDag(){
-  const idag=isoDatum(new Date());
+  const nu=new Date();
+  const idag=isoDatum(nu);
   if(!STATE.ui.dagslage || STATE.ui.dagslage.datum!==idag){
     STATE.ui.dagslage={ datum:idag, vader:"vet_ej", nonce:0, inteIdag:[] };
     tillampaChipDefaults(STATE, STATE.ui.dagslage);   // nytt datum ⇒ barnets startvärden
   }
+  nollstallNaturUtanforFonster(STATE, nu);            // §5.1 auto-nollställning
 }
 function setState(muter){
   synkaDag();
@@ -13350,6 +13548,16 @@ function taBortTagg(barnId, nyckel){
     s.weights[full]={ value:1.0, updatedAt:nuISO(new Date()), pinnad:false };
   });
 }
+// Naturläget (DATAMODELL §5.1): sätt tri-state per flagga. varde ∈ {"ja","nej",null}.
+// null = "vet ej" (nollställer flaggan). ui.naturlage är enhetslokal.
+function sattNaturflagga(id, varde){
+  if(NATURLAGE_IDS.indexOf(id)<0) return;
+  if(varde!=="ja" && varde!=="nej") varde=null;
+  setState(function(s){
+    if(!s.ui.naturlage || typeof s.ui.naturlage!=="object") s.ui.naturlage={};
+    s.ui.naturlage[id]=varde;
+  });
+}
 
 // ==== S9: RENDERING ====
 let IHOP_LAGE = false;         // "välj flera"-läge (ej persistent)
@@ -13438,30 +13646,109 @@ function bannerRitualer(nu, ctx, aktiviteter){
   aktiviteter.forEach(function(a){
     if(!a.ritual || !a.ritualDatum) return;
     const occ=ritualForekomst(nu, a.ritualDatum);
-    const inom = Math.abs((nu.getTime()-occ.getTime())/86400000) <= 21;    // ±21 dygn (motorns F-fönster)
-    if(!inom) return;
+    // Samma per-ritual fönster som motorns F (1.3): default [14, 7] —
+    // påminnelsen slutar när ritualen slutar (kransen tystnar efter midsommar).
+    let fore=14, efter=7;
+    if(Array.isArray(a.ritualFonster) && a.ritualFonster.length===2 &&
+       typeof a.ritualFonster[0]==="number" && typeof a.ritualFonster[1]==="number"){
+      fore=a.ritualFonster[0]; efter=a.ritualFonster[1];
+    }
+    const diff=(nu.getTime()-occ.getTime())/86400000;   // negativ = före ankardagen
+    if(diff < -fore || diff > efter) return;
     // Inte loggad i år inom fönstret (samma logik som motorns F, återanvänd fönstret).
     let loggadIAr=false;
     for(const lid in ctx.log){
       const l=ctx.log[lid];
       if(l && l.activityId===a.id && ctx.barnIds.indexOf(l.childId)>=0 && l.ts){
-        if(Math.abs((occ.getTime()-new Date(l.ts).getTime())/86400000) <= 21){ loggadIAr=true; break; }
+        const ldiff=(new Date(l.ts).getTime()-occ.getTime())/86400000;
+        if(ldiff >= -fore && ldiff <= efter){ loggadIAr=true; break; }
       }
     }
     if(!loggadIAr) ut.push(a);
   });
   return ut;
 }
+// Naturläget (DATAMODELL §5.1): flaggor som är i fönster för dagens datum.
+function naturFlaggorIFonster(nu){
+  const manad=nu.getMonth()+1, dag=nu.getDate();
+  return NATURLAGE.filter(function(f){ return inomNaturFonster(f, manad, dag); });
+}
+// Första i-fönster-flaggan som är obesvarad (null/saknas) — bannern frågar EN i taget.
+function forstaObesvaradeNatur(nu){
+  const ul=(STATE.ui && STATE.ui.naturlage) || {};
+  const iF=naturFlaggorIFonster(nu);
+  for(let i=0;i<iF.length;i++){ const v=ul[iF[i].id]; if(v!=="ja" && v!=="nej") return iF[i]; }
+  return null;
+}
+function renderNaturBanner(nu){
+  const iF=naturFlaggorIFonster(nu);
+  if(!iF.length) return "";                       // inga fenomen i fönster ⇒ tyst
+  const obes=forstaObesvaradeNatur(nu);
+  let inner="";
+  if(obes){
+    // (a) Ställ frågan direkt i bannern med Ja/Nej-knappar (§4.3).
+    inner='<span class="naturbanner-fraga">'+esc(obes.fraga)+'</span>'
+      + '<button class="chip liten" data-action="naturflagga" data-id="'+esc(obes.id)+'" data-varde="ja">Ja</button>'
+      + '<button class="chip liten" data-action="naturflagga" data-id="'+esc(obes.id)+'" data-varde="nej">Nej</button>';
+  }else{
+    inner='<span class="naturbanner-klar">🌿 Naturläget ifyllt</span>';
+  }
+  // (b) Diskret väg till Säsongsläget-dialogen.
+  inner+=' <button class="lank" data-action="oppnaNaturlage">Säsongsläget…</button>';
+  return '<div class="naturbanner">'+inner+'</div>';
+}
 function renderBanner(nu, ctx){
   if(!AKTIVITETER.length) return "";
   const hp=bannerHojdpunkter(nu, ctx, AKTIVITETER);
   const rit=bannerRitualer(nu, ctx, AKTIVITETER);
-  if(!hp.length && !rit.length) return "";
+  const natur=renderNaturBanner(nu);
+  if(!hp.length && !rit.length && !natur) return "";
   const chips=[];
   hp.forEach(function(a){ chips.push('<button class="chip liten sasongchip" data-action="oppnaDetalj" data-id="'+esc(a.id)+'">'+esc(a.titel)+'</button>'); });
   rit.forEach(function(a){ chips.push('<button class="chip liten sasongchip ritual" data-action="oppnaDetalj" data-id="'+esc(a.id)+'">'+esc(a.titel)+' närmar sig</button>'); });
-  const emoji = SASONG_EMOJI[ctx.sasong] || "✨";
-  return '<div class="sasongbanner"><span class="sasongbanner-titel">'+emoji+' Just nu:</span> '+chips.join(" ")+'</div>';
+  let h="";
+  if(hp.length || rit.length){
+    const emoji = SASONG_EMOJI[ctx.sasong] || "✨";
+    h+='<div class="sasongbanner"><span class="sasongbanner-titel">'+emoji+' Just nu:</span> '+chips.join(" ")+'</div>';
+  }
+  h+=natur;
+  return h;
+}
+// -- Säsongsläget-dialogen (DATAMODELL §5.1): tri-state per flagga, i fönster
+//    aktiva (Vet ej/Ja/Nej), övriga gråade med sina fönster. --
+const MAN_KORT = ["","jan","feb","mar","apr","maj","jun","jul","aug","sep","okt","nov","dec"];
+function fonsterText(f){
+  const a=f.fonster[0], b=f.fonster[1];
+  return a[1]+" "+MAN_KORT[a[0]]+" – "+b[1]+" "+MAN_KORT[b[0]];
+}
+function naturlageHtml(nu){
+  const ul=(STATE.ui && STATE.ui.naturlage) || {};
+  const manad=nu.getMonth()+1, dag=nu.getDate();
+  let h='<h2>Säsongsläget</h2>'
+    + '<p class="info">Naturen följer inte kalendern exakt. Svara vad som faktiskt hänt i år — '
+    + '"nej" tystar korten tills det är dags, "ja" lyfter dem.</p>';
+  NATURLAGE.forEach(function(f){
+    const iF=inomNaturFonster(f, manad, dag);
+    const v=ul[f.id];
+    if(iF){
+      h+='<div class="naturrad"><div class="naturrad-titel">'+esc(f.fraga)+'</div>'
+        + '<div class="naturval">'
+        + '<button class="chip liten'+((v!=="ja"&&v!=="nej")?" vald":"")+'" data-action="naturflagga" data-id="'+esc(f.id)+'" data-varde="">Vet ej</button>'
+        + '<button class="chip liten'+(v==="ja"?" vald":"")+'" data-action="naturflagga" data-id="'+esc(f.id)+'" data-varde="ja">Ja</button>'
+        + '<button class="chip liten'+(v==="nej"?" vald":"")+'" data-action="naturflagga" data-id="'+esc(f.id)+'" data-varde="nej">Nej</button>'
+        + '</div></div>';
+    }else{
+      h+='<div class="naturrad grad"><div class="naturrad-titel">'+esc(ETIKETTER[f.id]||f.id)+'</div>'
+        + '<div class="naturrad-fonster">'+esc(fonsterText(f))+'</div></div>';
+    }
+  });
+  h+='<button class="knapp ghost" data-action="stangNaturlage">Klart</button>';
+  return h;
+}
+function oppnaNaturlage(){
+  document.getElementById("naturlageInnehall").innerHTML=naturlageHtml(new Date());
+  const dlg=document.getElementById("naturlage");
+  if(dlg && dlg.showModal) dlg.showModal();
 }
 const SASONG_EMOJI = { midvinter:"❄️", varvinter:"🌱", var:"🌷", forsommar:"🌿",
   hogsommar:"☀️", skordetid:"🍓", host:"🍂", forjul:"🕯️" };
@@ -13925,6 +14212,15 @@ const HANTERARE = {
     if(aterstallFranSnapshot(v)) showToast("Återställt från "+info.datum);
   },
   stangNyar:    function(){ setState(function(s){ if(!s.meta) s.meta={}; s.meta.nyarBannerAr=new Date().getFullYear(); }); },
+  // Naturläget (DATAMODELL §5.1). varde ∈ {"ja","nej",""}; "" ⇒ vet ej (null).
+  naturflagga:  function(v,id){
+    sattNaturflagga(id, (v==="ja"||v==="nej")?v:null);
+    // Öppen dialog ⇒ rita om dess innehåll direkt (bannern ritas av renderApp via setState).
+    const dlg=document.getElementById("naturlage");
+    if(dlg && dlg.open){ document.getElementById("naturlageInnehall").innerHTML=naturlageHtml(new Date()); }
+  },
+  oppnaNaturlage: function(){ oppnaNaturlage(); },
+  stangNaturlage: function(){ const d=document.getElementById("naturlage"); if(d&&d.close) d.close(); },
   importValj:   function(){}   // hanteras via change-lyssnaren (fil-input)
 };
 // Prompt 4c: läs egen-aktivitet-formuläret till ett aktivitetsobjekt (år→månader).
@@ -14024,6 +14320,18 @@ function validera(alla){
       });
     }
     if(a.ritual){ if(!/^\d{2}-\d{2}$/.test(a.ritualDatum||"")) fel.push(p+": ritualDatum krävs"); }
+    // Naturflaggor (§2.2/§5.1): 0–2 ur NATURLAGE.
+    if(a.natur!==undefined){
+      if(!Array.isArray(a.natur)||a.natur.length>2) fel.push(p+": natur antal");
+      else a.natur.forEach(function(fid){ if(NATURLAGE_IDS.indexOf(fid)<0) fel.push(p+": okänd naturflagga "+fid); });
+    }
+    // ritualFonster (§2.2/§7.2): [int≥0, int≥0], endast med ritual.
+    if(a.ritualFonster!==undefined){
+      if(!a.ritual) fel.push(p+": ritualFonster utan ritual");
+      if(!Array.isArray(a.ritualFonster)||a.ritualFonster.length!==2||
+         !Number.isInteger(a.ritualFonster[0])||!Number.isInteger(a.ritualFonster[1])||
+         a.ritualFonster[0]<0||a.ritualFonster[1]<0) fel.push(p+": ritualFonster form");
+    }
     if(a.risk && a.risk.niva>=1){
       if(!Array.isArray(a.risk.kategorier)||!a.risk.kategorier.length||!a.risk.nytta||!a.risk.hantering) fel.push(p+": risk kräver kategorier+nytta+hantering");
       if(Array.isArray(a.risk.kategorier)) a.risk.kategorier.forEach(function(rk){ if(RISKKATEGORIER.indexOf(rk)<0) fel.push(p+": okänd riskkategori "+rk); });
@@ -14894,6 +15202,77 @@ function testEgenRoundtrip(){
   if(ab.customActivities["rt-1-abcd"].titel!=="Nytt namn på koja") fel.push("LWW valde fel version");
   return { ok:fel.length===0, info:fel.join(" | ") };
 }
+// -- Prompt 4e: Säsongsläget (naturflaggor + N-faktor + ritualFonster) --
+// N-faktorn (DATAMODELL §5.1/§7.1): ja⇒1.3 · obesvarad⇒0.5 · saknas⇒1.0 · nej⇒borta.
+function testNaturFaktor(){
+  const nu=new Date("2026-07-10T12:00:00");          // i jordgubbar-fönster (20/6–30/9)
+  const fel=[];
+  function ctxMed(nl){
+    const s=defaultState(); s.ui.basmiljo="garden"; s.ui.naturlage=nl;
+    return byggKontext(nu, s);
+  }
+  const aJa=mkFix("akt_0001",{ natur:["jordgubbar"] });
+  const aSaknas=mkFix("akt_0002",{});
+  // "ja" ⇒ N=1.3
+  let N=poangsatt(aJa, ctxMed({ jordgubbar:"ja" }), 0).faktorer.N;
+  if(Math.abs(N-1.3)>0.001) fel.push("ja: N="+N+"≠1.3");
+  // obesvarad (null) ⇒ N=0.5
+  N=poangsatt(aJa, ctxMed({ jordgubbar:null }), 0).faktorer.N;
+  if(Math.abs(N-0.5)>0.001) fel.push("obesvarad: N="+N+"≠0.5");
+  // natur saknas ⇒ N=1.0
+  N=poangsatt(aSaknas, ctxMed({ jordgubbar:"ja" }), 0).faktorer.N;
+  if(Math.abs(N-1.0)>0.001) fel.push("saknas: N="+N+"≠1.0");
+  // "nej" ⇒ aktiviteten borta ur poolen (hårdfiltrerad, aldrig relax)
+  const sNej=defaultState(); sNej.ui.basmiljo="garden"; sNej.ui.naturlage={ jordgubbar:"nej" };
+  const trio=dagensTre(nu, sNej, [ aJa, mkFix("akt_0009",{}) ]);
+  if(idLista(trio).indexOf("akt_0001")>=0) fel.push("nej: aktiviteten kvar i poolen");
+  return { ok:fel.length===0, info:fel.join(" | ") };
+}
+// Fönsterlogik: flagga utanför fönster ⇒ obesvarad (N=0.5) OCH nollställs vid dagssynk.
+function testNaturFonster(){
+  const nu=new Date("2026-07-10T12:00:00");          // lov (1/9–30/11) ligger UTANFÖR
+  const fel=[];
+  // Utanför fönster ⇒ värdet ignoreras ⇒ N=0.5 (som obesvarad), aldrig 1.3.
+  const s=defaultState(); s.ui.basmiljo="garden"; s.ui.naturlage={ lov:"ja" };
+  const aLov=mkFix("akt_0001",{ natur:["lov"] });
+  const N=poangsatt(aLov, byggKontext(nu, s), 0).faktorer.N;
+  if(Math.abs(N-0.5)>0.001) fel.push("utanför fönster men N="+N+"≠0.5");
+  // "nej" utanför fönster hårdfiltrerar INTE (naturen är inte i fönster).
+  const s2=defaultState(); s2.ui.basmiljo="garden"; s2.ui.naturlage={ lov:"nej" };
+  const trio=dagensTre(nu, s2, [ aLov, mkFix("akt_0009",{}) ]);
+  if(idLista(trio).indexOf("akt_0001")<0) fel.push("nej utanför fönster hårdfiltrerade felaktigt");
+  // Auto-nollställning: synkaDag ska sätta utanför-fönster-flaggan till null.
+  const andrade=nollstallNaturUtanforFonster({ ui:{ naturlage:{ lov:"ja", jordgubbar:"ja" } } }, nu);
+  // (Notera: helper muterar objektet vi skickar in — bygg ett färskt för kontroll.)
+  const obj={ ui:{ naturlage:{ lov:"ja", jordgubbar:"ja" } } };
+  nollstallNaturUtanforFonster(obj, nu);
+  if(obj.ui.naturlage.lov!==null) fel.push("lov nollställdes inte (utanför fönster)");
+  if(obj.ui.naturlage.jordgubbar!=="ja") fel.push("jordgubbar rördes trots i fönster");
+  return { ok:fel.length===0, info:(andrade>=0?"":"")+fel.join(" | ") };
+}
+// ritualFonster (DATAMODELL §7.2): [14,0] ⇒ dagen före F=2.5, dagen efter vanliga
+// tabellen; default [14,7] oförändrat; cykliskt över nyår.
+function testRitualFonster(){
+  const fel=[];
+  const s=defaultState(); s.ui.basmiljo="garden";
+  // Fixtur med asymmetriskt fönster [14,0] kring ritualDatum 06-24 (midsommarkransen-lik).
+  const akt=mkFix("akt_0001",{ ritual:true, ritualDatum:"06-24", ritualFonster:[14,0] });
+  // Dagen FÖRE (06-23): inom [−14,0] ⇒ F=2.5.
+  let F=farskhetFaktor(akt, byggKontext(new Date("2026-06-23T12:00:00"), s));
+  if(Math.abs(F-2.5)>0.001) fel.push("[14,0] dagen före: F="+F+"≠2.5");
+  // Dagen EFTER (06-25): utanför [−14,0] ⇒ vanliga tabellen (ologgat ⇒ 1.0).
+  F=farskhetFaktor(akt, byggKontext(new Date("2026-06-25T12:00:00"), s));
+  if(Math.abs(F-1.0)>0.001) fel.push("[14,0] dagen efter: F="+F+"≠1.0 (vanliga tabellen)");
+  // Default [14,7] (utelämnat fält): dagen efter (06-25) fortfarande inom ⇒ 2.5.
+  const aktDef=mkFix("akt_0002",{ ritual:true, ritualDatum:"06-24" });
+  F=farskhetFaktor(aktDef, byggKontext(new Date("2026-06-25T12:00:00"), s));
+  if(Math.abs(F-2.5)>0.001) fel.push("default [14,7] dagen efter: F="+F+"≠2.5");
+  // Cykliskt över nyår: ritualDatum 01-01, fönster default, den 30 dec ⇒ inom (−14) ⇒ 2.5.
+  const aktNyar=mkFix("akt_0003",{ ritual:true, ritualDatum:"01-01" });
+  F=farskhetFaktor(aktNyar, byggKontext(new Date("2026-12-30T12:00:00"), s));
+  if(Math.abs(F-2.5)>0.001) fel.push("nyår-cykliskt 30 dec: F="+F+"≠2.5");
+  return { ok:fel.length===0, info:fel.join(" | ") };
+}
 // -- Prompt 5 körning 0: täckningslint L2–L9 + maskinläsbar rapport (DATAMODELL §8) --
 // Linten gäller ENDAST databasen (AKTIVITETER ur S5-blocket), aldrig egna aktiviteter.
 // L1/L7/L8/L10 är hårda (rött vid brott). L2–L6 + L9 gäller fulldatabasen (~300) och
@@ -15171,7 +15550,10 @@ function byggTester(params){
     { namn:"Egen aktivitet: validering (giltig/fel avvisas)", fn:testEgenValidering },
     { namn:"Egen aktivitet i pool + detaljvy (id-uppslag)", fn:testEgenIPool },
     { namn:"Egen aktivitet: radering ⇒ tombstone (ur pool/lista)", fn:testEgenRaderingTombstone },
-    { namn:"Egen aktivitet: export→import-roundtrip (LWW)", fn:testEgenRoundtrip }
+    { namn:"Egen aktivitet: export→import-roundtrip (LWW)", fn:testEgenRoundtrip },
+    { namn:"Natur: N-faktor (ja 1.3 / obesvarad 0.5 / saknas 1.0 / nej borta)", fn:testNaturFaktor },
+    { namn:"Natur: fönsterlogik + auto-nollställning", fn:testNaturFonster },
+    { namn:"Ritual: per-ritual fönster (ritualFonster [14,0]/default/nyår)", fn:testRitualFonster }
   ];
 }
 // -- Prompt 5: celltabell (24 celler) + brottlista i test-UI:t --
